@@ -1,0 +1,83 @@
+@import "tailwindcss";
+
+/* Brand tokens. The five palette colours, plus two deeper tints used only
+   where text needs WCAG AA contrast on cream (terracotta-deep, olive-deep). */
+@theme inline {
+  --color-charcoal: #121212;
+  --color-charcoal-soft: #1c1a18;
+  --color-terracotta: #c76b45;
+  --color-terracotta-deep: #a3532f;
+  --color-terracotta-dark: #87431f;
+  --color-cream: #fff7ed;
+  --color-beige: #e8d8c3;
+  --color-olive: #8a9a5b;
+  --color-olive-deep: #5d6b3a;
+  --color-ink-muted: #5c534b;
+  --color-cream-muted: #cbbfb0;
+
+  --font-serif: var(--font-fraunces), Georgia, "Times New Roman", serif;
+  --font-sans: var(--font-dm-sans), system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+html {
+  scroll-behavior: smooth;
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  background: var(--color-cream);
+  color: var(--color-charcoal);
+  font-family: var(--font-sans);
+}
+
+::selection {
+  background: var(--color-terracotta);
+  color: var(--color-charcoal);
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-terracotta);
+  outline-offset: 3px;
+  border-radius: 2px;
+}
+
+/* Subtle motion only, and only when the visitor has not asked for less. */
+@keyframes rise {
+  from {
+    transform: translateY(14px);
+  }
+  to {
+    transform: none;
+  }
+}
+
+@keyframes reveal {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .motion-rise {
+    animation: rise 0.9s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  }
+
+  @supports (animation-timeline: view()) {
+    .motion-reveal {
+      animation: reveal linear both;
+      animation-timeline: view();
+      animation-range: entry 0% entry 40%;
+    }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+}

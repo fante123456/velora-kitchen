@@ -1,0 +1,4 @@
+User-Agent: *
+Allow: /
+
+Sitemap: https://velora-kitchen.ammar-rajabi.com/sitemap.xml
