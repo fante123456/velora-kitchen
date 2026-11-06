@@ -1,15 +1,86 @@
 "use client";
 
 import { useEffect, useRef, useState, type FormEvent } from "react";
-import { CheckCircle2 } from "lucide-react";
+import { Info, Phone } from "lucide-react";
+import type { Locale } from "@/lib/i18n";
+import { site } from "@/lib/site";
 
 type Field = "name" | "email" | "phone" | "date" | "guests" | "message";
 type Errors = Partial<Record<Field, string>>;
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
-const PHONE_PATTERN = /^[+()\d\s-]{10,20}$/;
+const PHONE_PATTERN = /^[+()\d\s.-]{10,20}$/;
 
-function validate(data: FormData): Errors {
+const copy = {
+  fr: {
+    errors: {
+      name: "Indiquez votre nom.",
+      email: "Indiquez une adresse e-mail, par exemple nom@exemple.fr.",
+      phone: "Indiquez un numéro de téléphone, ou laissez ce champ vide.",
+      dateEmpty: "Choisissez la date de votre venue.",
+      datePast: "Choisissez aujourd'hui ou une date à venir.",
+      dateClosed: "Le restaurant est fermé le mercredi. Choisissez un autre jour.",
+      guests: "Choisissez le nombre de personnes.",
+      message: "Votre message doit faire moins de 500 caractères.",
+    },
+    note: "Démonstration : ce formulaire n'envoie rien au restaurant. Pour réserver, appelez le",
+    required: "Les champs marqués",
+    requiredEnd: "sont obligatoires.",
+    requiredSr: "d'un astérisque",
+    name: "Nom",
+    email: "E-mail",
+    phone: "Téléphone",
+    optional: "(facultatif)",
+    date: "Date",
+    dateHint: "Ouvert le midi tous les jours sauf le mercredi, le soir le vendredi et le samedi.",
+    guests: "Nombre de personnes",
+    guestsChoose: "Choisir le nombre de personnes",
+    guest: (n: number) => `${n} ${n === 1 ? "personne" : "personnes"}`,
+    guestsHint: "Pour un groupe, appelez-nous.",
+    message: "Message",
+    messageHint: "Allergies, occasion particulière, midi ou soir.",
+    submit: "Demander une table",
+    demoTitle: `Formulaire de démonstration – appelez le ${site.phone}`,
+    demoText: "Ce site est un projet d'entraînement : rien n'a été envoyé et aucune table n'est réservée.",
+    call: `Appeler le ${site.phone}`,
+    back: "Revenir au formulaire",
+  },
+  en: {
+    errors: {
+      name: "Enter your name.",
+      email: "Enter an email address, for example name@example.com.",
+      phone: "Enter a phone number, or leave this empty.",
+      dateEmpty: "Choose a date for your visit.",
+      datePast: "Choose today or a date in the future.",
+      dateClosed: "The restaurant is closed on Wednesdays. Choose another day.",
+      guests: "Choose how many guests.",
+      message: "Keep your message under 500 characters.",
+    },
+    note: "Demo: this form does not send anything to the restaurant. To book, call",
+    required: "Fields marked",
+    requiredEnd: "are required.",
+    requiredSr: "with an asterisk",
+    name: "Name",
+    email: "Email",
+    phone: "Phone",
+    optional: "(optional)",
+    date: "Date",
+    dateHint: "Open for lunch every day except Wednesday, and for dinner on Friday and Saturday.",
+    guests: "Guests",
+    guestsChoose: "Choose number of guests",
+    guest: (n: number) => `${n} ${n === 1 ? "guest" : "guests"}`,
+    guestsHint: "For a group, please call us.",
+    message: "Message",
+    messageHint: "Allergies, a special occasion, lunch or dinner.",
+    submit: "Request a table",
+    demoTitle: `Demo form – please call ${site.phone}`,
+    demoText: "This website is a practice project: nothing has been sent and no table is booked.",
+    call: `Call ${site.phone}`,
+    back: "Back to the form",
+  },
+};
+
+function validate(data: FormData, t: (typeof copy)["fr"]["errors"]): Errors {
   const errors: Errors = {};
   const name = String(data.get("name") ?? "").trim();
   const email = String(data.get("email") ?? "").trim();
@@ -18,22 +89,22 @@ function validate(data: FormData): Errors {
   const guests = String(data.get("guests") ?? "");
   const message = String(data.get("message") ?? "").trim();
 
-  if (name.length < 2) errors.name = "Enter your name.";
-  if (!EMAIL_PATTERN.test(email)) errors.email = "Enter an email address like name@example.com.";
-  if (phone && !PHONE_PATTERN.test(phone)) errors.phone = "Enter a UK phone number, or leave this empty.";
+  if (name.length < 2) errors.name = t.name;
+  if (!EMAIL_PATTERN.test(email)) errors.email = t.email;
+  if (phone && !PHONE_PATTERN.test(phone)) errors.phone = t.phone;
 
   if (!date) {
-    errors.date = "Choose a date for your visit.";
+    errors.date = t.dateEmpty;
   } else {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const chosen = new Date(`${date}T00:00:00`);
-    if (chosen < today) errors.date = "Choose today or a date in the future.";
-    else if (chosen.getDay() === 1) errors.date = "We are closed on Mondays. Choose another day.";
+    if (chosen < today) errors.date = t.datePast;
+    else if (chosen.getDay() === 3) errors.date = t.dateClosed;
   }
 
-  if (!guests) errors.guests = "Choose how many guests.";
-  if (message.length > 500) errors.message = "Keep your message under 500 characters.";
+  if (!guests) errors.guests = t.guests;
+  if (message.length > 500) errors.message = t.message;
 
   return errors;
 }
@@ -50,17 +121,17 @@ function FieldError({ id, message }: { id: string; message?: string }) {
   );
 }
 
-export function ContactForm() {
+/** Demo booking form: it checks the fields, then only shows a "please call" message. Nothing is sent. */
+export function ContactForm({ locale }: { locale: Locale }) {
+  const t = copy[locale];
   const [errors, setErrors] = useState<Errors>({});
-  const [sentTo, setSentTo] = useState<string | null>(null);
-  const formRef = useRef<HTMLFormElement>(null);
-  const successRef = useRef<HTMLDivElement>(null);
+  const [submitted, setSubmitted] = useState(false);
+  const statusRef = useRef<HTMLDivElement>(null);
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = event.currentTarget;
-    const data = new FormData(form);
-    const nextErrors = validate(data);
+    const nextErrors = validate(new FormData(form), t.errors);
     setErrors(nextErrors);
 
     const firstInvalid = Object.keys(nextErrors)[0] as Field | undefined;
@@ -69,14 +140,14 @@ export function ContactForm() {
       return;
     }
 
-    setSentTo(String(data.get("name")).trim().split(" ")[0]);
     form.reset();
+    setSubmitted(true);
   }
 
-  // Move keyboard and screen-reader focus to the confirmation once it renders.
+  // Move keyboard and screen-reader focus to the message once it renders.
   useEffect(() => {
-    if (sentTo) successRef.current?.focus();
-  }, [sentTo]);
+    if (submitted) statusRef.current?.focus();
+  }, [submitted]);
 
   function clearError(field: Field) {
     if (errors[field]) setErrors((current) => ({ ...current, [field]: undefined }));
@@ -87,42 +158,55 @@ export function ContactForm() {
 
   const border = (field: Field) => (errors[field] ? "border-terracotta-dark" : "border-charcoal/20");
 
-  if (sentTo) {
+  if (submitted) {
     return (
       <div
-        ref={successRef}
+        ref={statusRef}
         tabIndex={-1}
         role="status"
         className="rounded-sm border border-olive/60 bg-white/60 p-8 focus:outline-none"
       >
-        <CheckCircle2 className="size-8 text-olive-deep" strokeWidth={1.5} aria-hidden="true" />
-        <h3 className="mt-4 font-serif text-3xl">Thank you, {sentTo}</h3>
-        <p className="mt-3 leading-relaxed text-ink-muted">
-          Your request looks good. This is a demo website, so nothing has been sent and no table is reserved. For a real
-          restaurant, this is where the booking would be confirmed.
-        </p>
-        <button
-          type="button"
-          onClick={() => setSentTo(null)}
-          className="mt-6 inline-flex min-h-12 items-center rounded-full border border-charcoal/25 px-6 text-sm font-medium hover:border-charcoal hover:bg-charcoal hover:text-cream"
-        >
-          Make another request
-        </button>
+        <Info className="size-8 text-olive-deep" strokeWidth={1.5} aria-hidden="true" />
+        <h3 className="mt-4 font-serif text-3xl leading-tight">{t.demoTitle}</h3>
+        <p className="mt-3 leading-relaxed text-ink-muted">{t.demoText}</p>
+        <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+          <a
+            href={site.phoneHref}
+            className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-terracotta-deep px-6 text-sm font-medium text-cream hover:bg-terracotta-dark"
+          >
+            <Phone className="size-4" aria-hidden="true" />
+            {t.call}
+          </a>
+          <button
+            type="button"
+            onClick={() => setSubmitted(false)}
+            className="inline-flex min-h-12 items-center justify-center rounded-full border border-charcoal/25 px-6 text-sm font-medium hover:border-charcoal hover:bg-charcoal hover:text-cream"
+          >
+            {t.back}
+          </button>
+        </div>
       </div>
     );
   }
 
   return (
-    <form ref={formRef} noValidate onSubmit={handleSubmit} className="space-y-6" aria-describedby="form-note">
+    <form noValidate onSubmit={handleSubmit} className="space-y-6" aria-describedby="form-demo form-note">
+      <p id="form-demo" className="rounded-sm border border-olive/60 bg-white/60 px-4 py-3 text-sm leading-relaxed">
+        {t.note}{" "}
+        <a href={site.phoneHref} className="font-medium whitespace-nowrap underline underline-offset-4">
+          {site.phone}
+        </a>
+        .
+      </p>
       <p id="form-note" className="text-sm text-ink-muted">
-        Fields marked <span aria-hidden="true">*</span>
-        <span className="sr-only">with an asterisk</span> are required.
+        {t.required} <span aria-hidden="true">*</span>
+        <span className="sr-only">{t.requiredSr}</span> {t.requiredEnd}
       </p>
 
       <div className="grid gap-6 sm:grid-cols-2">
         <div>
           <label htmlFor="name" className="text-sm font-medium">
-            Name <span aria-hidden="true">*</span>
+            {t.name} <span aria-hidden="true">*</span>
           </label>
           <input
             id="name"
@@ -140,7 +224,7 @@ export function ContactForm() {
 
         <div>
           <label htmlFor="email" className="text-sm font-medium">
-            Email <span aria-hidden="true">*</span>
+            {t.email} <span aria-hidden="true">*</span>
           </label>
           <input
             id="email"
@@ -159,7 +243,7 @@ export function ContactForm() {
 
         <div>
           <label htmlFor="phone" className="text-sm font-medium">
-            Phone <span className="font-normal text-ink-muted">(optional)</span>
+            {t.phone} <span className="font-normal text-ink-muted">{t.optional}</span>
           </label>
           <input
             id="phone"
@@ -177,7 +261,7 @@ export function ContactForm() {
 
         <div>
           <label htmlFor="date" className="text-sm font-medium">
-            Date <span aria-hidden="true">*</span>
+            {t.date} <span aria-hidden="true">*</span>
           </label>
           <input
             id="date"
@@ -190,14 +274,14 @@ export function ContactForm() {
             className={`${inputClass} ${border("date")}`}
           />
           <p id="date-hint" className="mt-2 text-sm text-ink-muted">
-            Open Tuesday to Sunday.
+            {t.dateHint}
           </p>
           <FieldError id="date-error" message={errors.date} />
         </div>
 
         <div className="sm:col-span-2">
           <label htmlFor="guests" className="text-sm font-medium">
-            Guests <span aria-hidden="true">*</span>
+            {t.guests} <span aria-hidden="true">*</span>
           </label>
           <select
             id="guests"
@@ -210,23 +294,23 @@ export function ContactForm() {
             className={`${inputClass} ${border("guests")} appearance-auto`}
           >
             <option value="" disabled>
-              Choose number of guests
+              {t.guestsChoose}
             </option>
             {[1, 2, 3, 4, 5, 6, 7, 8].map((n) => (
               <option key={n} value={n}>
-                {n} {n === 1 ? "guest" : "guests"}
+                {t.guest(n)}
               </option>
             ))}
           </select>
           <p id="guests-hint" className="mt-2 text-sm text-ink-muted">
-            For nine or more, please call us.
+            {t.guestsHint}
           </p>
           <FieldError id="guests-error" message={errors.guests} />
         </div>
 
         <div className="sm:col-span-2">
           <label htmlFor="message" className="text-sm font-medium">
-            Message <span className="font-normal text-ink-muted">(optional)</span>
+            {t.message} <span className="font-normal text-ink-muted">{t.optional}</span>
           </label>
           <textarea
             id="message"
@@ -239,7 +323,7 @@ export function ContactForm() {
             className={`${inputClass} ${border("message")} resize-y`}
           />
           <p id="message-hint" className="mt-2 text-sm text-ink-muted">
-            Allergies, a special occasion, or a preferred time.
+            {t.messageHint}
           </p>
           <FieldError id="message-error" message={errors.message} />
         </div>
@@ -249,7 +333,7 @@ export function ContactForm() {
         type="submit"
         className="inline-flex min-h-12 w-full items-center justify-center rounded-full bg-terracotta-deep px-8 text-sm font-medium tracking-wide text-cream transition-colors hover:bg-terracotta-dark sm:w-auto"
       >
-        Request a table
+        {t.submit}
       </button>
     </form>
   );

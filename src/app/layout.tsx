@@ -1,8 +1,7 @@
 import type { Metadata, Viewport } from "next";
+import type { ReactNode } from "react";
 import { DM_Sans, Fraunces } from "next/font/google";
-import { SiteFooter } from "@/components/site-footer";
-import { SiteHeader } from "@/components/site-header";
-import { site } from "@/lib/site";
+import { description, site } from "@/lib/site";
 import "./globals.css";
 
 const fraunces = Fraunces({
@@ -19,7 +18,7 @@ const dmSans = DM_Sans({
   display: "swap",
 });
 
-const homeTitle = "Velora Kitchen | Modern Restaurant in Manchester";
+const homeTitle = "Le 9bourg | Restaurant fait maison à Saint-Lô";
 
 export const metadata: Metadata = {
   metadataBase: new URL(site.url),
@@ -27,21 +26,27 @@ export const metadata: Metadata = {
     default: homeTitle,
     template: `%s | ${site.name}`,
   },
-  description: site.description,
+  description: description.fr,
   applicationName: site.name,
   alternates: { canonical: "/" },
+  // Practice demo for a real business (real-business branch only): keep it out of search engines.
+  robots: {
+    index: false,
+    follow: false,
+    googleBot: { index: false, follow: false },
+  },
   openGraph: {
     type: "website",
-    locale: "en_GB",
+    locale: "fr_FR",
     siteName: site.name,
     url: "/",
     title: homeTitle,
-    description: site.description,
+    description: description.fr,
   },
   twitter: {
     card: "summary_large_image",
     title: homeTitle,
-    description: site.description,
+    description: description.fr,
   },
   formatDetection: { telephone: false },
 };
@@ -50,22 +55,11 @@ export const viewport: Viewport = {
   themeColor: "#121212",
 };
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+/** French is the default language. English pages set lang="en" on their own wrapper (see SiteShell). */
+export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="en-GB" className={`${fraunces.variable} ${dmSans.variable} antialiased`}>
-      <body className="flex min-h-dvh flex-col">
-        <a
-          href="#main"
-          className="sr-only z-50 rounded-full bg-cream px-4 py-2 text-sm text-charcoal focus:not-sr-only focus:fixed focus:top-3 focus:left-3"
-        >
-          Skip to content
-        </a>
-        <SiteHeader />
-        <main id="main" className="flex-1">
-          {children}
-        </main>
-        <SiteFooter />
-      </body>
+    <html lang="fr" className={`${fraunces.variable} ${dmSans.variable} antialiased`}>
+      <body>{children}</body>
     </html>
   );
 }

@@ -47,16 +47,33 @@ const buttonStyles: Record<ButtonVariant, string> = {
   "outline-dark": "border border-cream/30 text-cream hover:border-cream hover:bg-cream hover:text-charcoal",
 };
 
+const buttonBase =
+  "inline-flex min-h-12 items-center justify-center gap-2 rounded-full px-6 text-sm font-medium tracking-wide transition-colors duration-200";
+
 export function ButtonLink({
   variant = "primary",
   className = "",
   ...props
 }: ComponentProps<typeof Link> & { variant?: ButtonVariant }) {
+  return <Link {...props} className={`${buttonBase} ${buttonStyles[variant]} ${className}`} />;
+}
+
+/** Same look as ButtonLink, for tel: links and other websites. */
+export function ButtonAnchor({
+  variant = "primary",
+  className = "",
+  ...props
+}: ComponentProps<"a"> & { variant?: ButtonVariant }) {
+  return <a {...props} className={`${buttonBase} ${buttonStyles[variant]} ${className}`} />;
+}
+
+/** Text logo: "le 9bourg" with a slightly bigger, bolder terracotta 9 (their wall sign says "le 9"). */
+export function Logo({ className = "" }: { className?: string }) {
   return (
-    <Link
-      {...props}
-      className={`inline-flex min-h-12 items-center justify-center gap-2 rounded-full px-6 text-sm font-medium tracking-wide transition-colors duration-200 ${buttonStyles[variant]} ${className}`}
-    />
+    <span className={`font-serif tracking-tight ${className}`}>
+      le{" "}
+      <span className="text-[1.3em] leading-none font-semibold text-terracotta">9</span>bourg
+    </span>
   );
 }
 

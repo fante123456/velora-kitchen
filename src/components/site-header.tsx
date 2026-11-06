@@ -3,15 +3,78 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Menu, X } from "lucide-react";
-import { navLinks } from "@/lib/site";
+import { Menu, Phone, X } from "lucide-react";
+import { basePath, localePath, type Locale } from "@/lib/i18n";
+import { navLinks, site } from "@/lib/site";
+import { Logo } from "./ui";
 
-function isActive(pathname: string, href: string) {
-  return href === "/" ? pathname === "/" : pathname.startsWith(href);
+const copy = {
+  fr: {
+    home: "le 9bourg, accueil",
+    nav: "Navigation principale",
+    mobileNav: "Navigation mobile",
+    open: "Ouvrir le menu",
+    close: "Fermer le menu",
+    book: "Réserver",
+    bookLabel: `Réserver, appeler le ${site.phone}`,
+    language: "Choisir la langue",
+  },
+  en: {
+    home: "le 9bourg, home",
+    nav: "Main",
+    mobileNav: "Mobile",
+    open: "Open menu",
+    close: "Close menu",
+    book: "Book",
+    bookLabel: `Book, call ${site.phone}`,
+    language: "Choose language",
+  },
+} satisfies Record<Locale, Record<string, string>>;
+
+function isActive(current: string, href: string) {
+  return href === "/" ? current === "/" : current.startsWith(href);
 }
 
-export function SiteHeader() {
+function LanguageSwitch({ locale, current, label }: { locale: Locale; current: string; label: string }) {
+  const options = [
+    { code: "fr" as const, text: "FR", name: "Français" },
+    { code: "en" as const, text: "EN", name: "English" },
+  ];
+  return (
+    <nav aria-label={label}>
+      <ul className="flex items-center text-sm">
+        {options.map((option, index) => (
+          <li key={option.code} className="flex items-center">
+            {index > 0 ? (
+              <span className="px-1 text-cream/40" aria-hidden="true">
+                |
+              </span>
+            ) : null}
+            <Link
+              href={localePath(option.code, current)}
+              hrefLang={option.code}
+              lang={option.code}
+              aria-current={option.code === locale ? "true" : undefined}
+              title={option.name}
+              className={`inline-flex min-h-11 min-w-9 items-center justify-center rounded-full px-1.5 font-medium transition-colors hover:text-cream ${
+                option.code === locale ? "text-cream underline decoration-terracotta underline-offset-4" : "text-cream-muted"
+              }`}
+            >
+              {option.text}
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </nav>
+  );
+}
+
+export function SiteHeader({ locale }: { locale: Locale }) {
   const pathname = usePathname();
+  // On the 404 page the pathname is "/_not-found": switch languages via the home pages instead.
+  const current = pathname.includes("_not-found") ? "/" : basePath(pathname);
+  const t = copy[locale];
+  const links = navLinks[locale];
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
@@ -25,23 +88,24 @@ export function SiteHeader() {
 
   return (
     <header className="sticky top-0 z-40 border-b border-cream/10 bg-charcoal text-cream">
-      <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between gap-6 px-5 sm:h-20 sm:px-8">
+      <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between gap-4 px-5 sm:h-20 sm:px-8 lg:gap-6">
         <Link
-          href="/"
-          className="font-serif text-xl tracking-tight sm:text-2xl"
+          href={localePath(locale, "/")}
+          aria-label={t.home}
+          className="text-2xl sm:text-[1.7rem]"
           onClick={() => setOpen(false)}
         >
-          Velora <span className="italic text-beige">Kitchen</span>
+          <Logo />
         </Link>
 
-        <nav aria-label="Main" className="hidden md:block">
+        <nav aria-label={t.nav} className="hidden lg:block">
           <ul className="flex items-center gap-8 text-sm">
-            {navLinks.map((link) => {
-              const active = isActive(pathname, link.href);
+            {links.map((link) => {
+              const active = isActive(current, link.href);
               return (
                 <li key={link.href}>
                   <Link
-                    href={link.href}
+                    href={localePath(locale, link.href)}
                     aria-current={active ? "page" : undefined}
                     className={`relative py-2 transition-colors hover:text-cream ${
                       active
@@ -57,19 +121,22 @@ export function SiteHeader() {
           </ul>
         </nav>
 
-        <div className="flex items-center gap-2">
-          <Link
-            href="/contact#book"
-            className="hidden min-h-11 items-center rounded-full bg-terracotta-deep px-5 text-sm font-medium text-cream transition-colors hover:bg-terracotta-dark sm:inline-flex"
+        <div className="flex items-center gap-1 sm:gap-3">
+          <LanguageSwitch locale={locale} current={current} label={t.language} />
+          <a
+            href={site.phoneHref}
+            aria-label={t.bookLabel}
+            className="hidden min-h-11 items-center gap-2 rounded-full bg-terracotta-deep px-5 text-sm font-medium text-cream transition-colors hover:bg-terracotta-dark sm:inline-flex"
           >
-            Book a table
-          </Link>
+            <Phone className="size-4" aria-hidden="true" />
+            {t.book}
+          </a>
           <button
             type="button"
-            className="inline-flex size-11 items-center justify-center rounded-full border border-cream/20 md:hidden"
+            className="inline-flex size-11 items-center justify-center rounded-full border border-cream/20 lg:hidden"
             aria-expanded={open}
             aria-controls="mobile-nav"
-            aria-label={open ? "Close menu" : "Open menu"}
+            aria-label={open ? t.close : t.open}
             onClick={() => setOpen((value) => !value)}
           >
             {open ? <X className="size-5" aria-hidden="true" /> : <Menu className="size-5" aria-hidden="true" />}
@@ -79,17 +146,17 @@ export function SiteHeader() {
 
       <nav
         id="mobile-nav"
-        aria-label="Mobile"
+        aria-label={t.mobileNav}
         hidden={!open}
-        className="border-t border-cream/10 bg-charcoal md:hidden"
+        className="border-t border-cream/10 bg-charcoal lg:hidden"
       >
         <ul className="mx-auto w-full max-w-6xl px-5 py-4 sm:px-8">
-          {navLinks.map((link) => {
-            const active = isActive(pathname, link.href);
+          {links.map((link) => {
+            const active = isActive(current, link.href);
             return (
               <li key={link.href}>
                 <Link
-                  href={link.href}
+                  href={localePath(locale, link.href)}
                   aria-current={active ? "page" : undefined}
                   onClick={() => setOpen(false)}
                   className={`flex min-h-12 items-center justify-between border-b border-cream/10 font-serif text-2xl ${
@@ -103,13 +170,13 @@ export function SiteHeader() {
             );
           })}
           <li className="pt-5">
-            <Link
-              href="/contact#book"
-              onClick={() => setOpen(false)}
-              className="flex min-h-12 items-center justify-center rounded-full bg-terracotta-deep text-sm font-medium text-cream"
+            <a
+              href={site.phoneHref}
+              className="flex min-h-12 items-center justify-center gap-2 rounded-full bg-terracotta-deep text-sm font-medium text-cream"
             >
-              Book a table
-            </Link>
+              <Phone className="size-4" aria-hidden="true" />
+              {t.book} · {site.phone}
+            </a>
           </li>
         </ul>
       </nav>
